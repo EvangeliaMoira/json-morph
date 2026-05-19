@@ -3,7 +3,7 @@
 A fast, single-file, browser-based utility designed for managing, filtering, and batch-updating JSON datasets. This tool is optimized for developers and translators handling localization files, configuration objects, or structured data arrays without needing external servers or complex command-line tools.
 
 ## 🚀 Live Demo
-You can try the application live here: ****
+You can try the application live here: **https://evangeliamoira.github.io/json-morph/**
 
 ## ✨ Features
 *   **Zero Dependencies:** Built entirely with native HTML5, CSS3 variables, and vanilla modern JavaScript. Completely client-side for maximum privacy and speed.
