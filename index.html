@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>JSON Morph: Find, Replace & Filter Utility</title>
+    <style>
+      :root {
+        --bg: #eef2f7;
+        --card: #ffffff;
+        --sidebar-bg: #111827;
+        --sidebar-border: #1f2937;
+        --primary: #6366f1;
+        --primary-hover: #4f46e5;
+        --text: #111827;
+        --muted: #6b7280;
+        --sidebar-text: #e5e7eb;
+        --sidebar-muted: #9ca3af;
+        --border: #e5e7eb;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .app-title {
+        text-align: center;
+        margin-bottom: 24px;
+        font-size: 22px;
+        font-weight: 600;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      .sidebar {
+        background: var(--sidebar-bg);
+        color: var(--sidebar-text);
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+      }
+      
+      .sidebar h3 {
+        margin: 0 0 12px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--sidebar-muted);
+      }
+
+      .main {
+        background: var(--card);
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      .section { margin-bottom: 26px; }
+      .section:last-child { margin-bottom: 0; }
+
+      .section h4 {
+        margin: 0 0 12px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      label {
+        display: block;
+        margin-top: 10px;
+        margin-bottom: 4px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      input[type="text"], select {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        font-size: 14px;
+        outline: none;
+      }
+
+      input[type="text"]:focus, select:focus {
+        border-color: var(--primary);
+      }
+
+      button {
+        margin-top: 12px;
+        width: 100%;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        background: var(--primary);
+        color: #fff;
+      }
+
+      button:hover { background: var(--primary-hover); }
+      button.primary { background: var(--primary); }
+
+      .url-loader { position: relative; }
+
+      #urlSuggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        width: fit-content;
+        max-width: 600px;
+        max-height: 300px;
+        background: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+        z-index: 100;
+        color: black;
+        font-size: 12px;
+        display: none;
+      }
+
+      #urlSuggestions div {
+        padding: 11px 10px;
+        cursor: pointer;
+      }
+
+      #urlSuggestions div:hover { background: #eef2ff; }
+
+      .filter-bar {
+        position: sticky;
+        top: 0;
+        background: var(--card);
+        padding-bottom: 12px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+        font-weight: 500;
+      }
+
+      .content-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 16px;
+      }
+
+      .json-block {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+      }
+
+      .json-block pre {
+        margin: 0;
+        font-family: Consolas, monospace;
+        font-size: 13px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .highlight {
+        background: #fde68a;
+        color: #111827;
+        padding: 1px 4px;
+        border-radius: 4px;
+        font-weight: 600;
+      }
+
+      .highlight-key {
+        background: #ddc5f1;
+        color: #111827;
+        padding: 1px 4px;
+        border-radius: 4px;
+        font-weight: 600;
+      }
+
+      @media (max-width: 900px) {
+        .app { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2 class="app-title">JSON Morph: Find, Replace & Filter Utility</h2>
+
+    <div class="app">
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <!-- Load JSON -->
+        <div class="section">
+          <h3>Load JSON</h3>
+          <div class="url-loader">
+            <input type="text" id="jsonUrl" placeholder="https://yourjson.com/file.json" autocomplete="off" />
+            <div id="urlSuggestions"></div>
+          </div>
+          <button class="primary" id="loadUrlBtn">Load</button>
+        </div>
+
+        <!-- Filters -->
+        <div class="section">
+          <h3>Filters</h3>
+          <label>Language</label>
+          <select id="languageFilter"></select>
+
+          <label>Key</label>
+          <select id="keyFilterDropdown"></select>
+
+          <button class="primary" id="applyFiltersBtn">Apply Filters</button>
+        </div>
+
+        <!-- Find & Replace -->
+        <div class="section">
+          <h3>Find & Replace</h3>
+          <label>Find</label>
+          <input type="text" id="findText" />
+
+          <label>Replace</label>
+          <input type="text" id="replaceText" />
+
+          <div style="display: flex; gap: 10px; margin-top: 12px;">
+            <button id="replaceBtn" style="flex: 2;">Apply Replace</button>
+            <button id="undoBtn" style="flex: 1; background: #6b7280; opacity: 0.5; cursor: not-allowed;" disabled>↩ Undo</button>
+          </div>
+
+          <label style="display: flex; align-items: center; gap: 6px; margin-top: 8px;">
+            <input type="checkbox" id="replaceKeysToggle" />
+            Replace keys (not just values)
+          </label>
+        </div>
+
+        <!-- Export -->
+        <div class="section">
+          <h3>Export</h3>
+          <button class="primary" id="downloadBtn">Download JSON</button>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT -->
+      <main class="main">
+        <div class="filter-bar">
+          <strong>Loaded Content</strong>
+        </div>
+        <div id="contentContainer" class="content-grid"></div>
+      </main>
+    </div>
+
+    <!-- CLEANED & OPTIMIZED JAVASCRIPT -->
+    <script>
+      // --- APP STATE ---
+      let mergedJson = [];
+      let currentHighlights = {};
+      let historyStack = [];
+      
+      const URL_HISTORY_KEY = "jsonUrlHistory";
+      const MAX_HISTORY = 5;
+      const MAX_UNDO_DEPTH = 20;
+
+      const GROUP_PATTERNS = {
+        "⚙️ Meta": ["id", "index", "language", "template", "purpose"],
+        "📝 Content": ["title", "headline", "body", "text", "subject", "cta"],
+        "🖼 Media": ["img", "image", "pic", "icon", "video"],
+        "🔢 Values": ["amount", "price", "value", "count", "total", "link"],
+      };
+
+      // --- DOM ELEMENT CACHE ---
+      const els = {
+        urlInput: document.getElementById("jsonUrl"),
+        suggestions: document.getElementById("urlSuggestions"),
+        langFilter: document.getElementById("languageFilter"),
+        keyFilter: document.getElementById("keyFilterDropdown"),
+        container: document.getElementById("contentContainer"),
+        undoBtn: document.getElementById("undoBtn"),
+        findInput: document.getElementById("findText"),
+        replaceInput: document.getElementById("replaceText"),
+        keyToggle: document.getElementById("replaceKeysToggle")
+      };
+
+      // --- CORE DATA PIPELINES (Calculated Data state) ---
+      const getFilteredData = () => {
+        const lang = els.langFilter.value.toUpperCase();
+        const activeKeys = Array.from(els.keyFilter.selectedOptions).map(o => o.value).filter(Boolean);
+
+        return mergedJson.filter(item => {
+          const matchesLang = !lang || item.language?.toUpperCase().includes(lang);
+          const matchesKey = !activeKeys.length || Object.keys(item).some(k => activeKeys.includes(k));
+          return matchesLang && matchesKey;
+        });
+      };
+
+      const trackHighlight = (uid, key, type) => {
+        currentHighlights[uid] ??= {};
+        currentHighlights[uid][key] ??= [];
+        if (!currentHighlights[uid][key].includes(type)) currentHighlights[uid][key].push(type);
+      };
+
+      const verifyDataLoaded = () => {
+        if (mergedJson.length) return true;
+        alert("⚠️ Please load a JSON file first.");
+        return false;
+      };
+
+      // --- STATE MODIFIERS ---
+      function pushHistoryState() {
+        if (historyStack.push(structuredClone(mergedJson)) > MAX_UNDO_DEPTH) historyStack.shift();
+        updateUndoUI();
+      }
+
+      function updateUndoUI() {
+        const len = historyStack.length;
+        els.undoBtn.disabled = !len;
+        els.undoBtn.style.opacity = len ? "1" : "0.5";
+        els.undoBtn.style.cursor = len ? "pointer" : "not-allowed";
+        els.undoBtn.innerText = len ? `↩ Undo (${len})` : "↩ Undo";
+      }
+
+      // --- RENDERING ENGINE ---
+      function render(showOnlyChanges = false) {
+        els.container.innerHTML = "";
+        const targetData = getFilteredData();
+
+        if (!targetData.length) {
+          els.container.innerHTML = "<p><b>No results found.</b></p>";
+          return;
+        }
+
+        const activeKeys = Array.from(els.keyFilter.selectedOptions).map(o => o.value).filter(Boolean);
+        let renderedCount = 0;
+
+        targetData.forEach(item => {
+          const uid = item._uid;
+          const itemHighlights = currentHighlights[uid] || {};
+          if (showOnlyChanges && !Object.keys(itemHighlights).length) return;
+
+          let blockBuffer = "";
+
+          Object.entries(item).forEach(([key, value]) => {
+            if (key === '_uid') return;
+            if (!showOnlyChanges && activeKeys.length && !activeKeys.includes(key)) return;
+            
+            const types = itemHighlights[key] || [];
+            if (showOnlyChanges && !types.length) return;
+
+            const keyStr = types.includes("key") ? `<span class="highlight-key">"${key}"</span>` : `"${key}"`;
+            const cleanVal = (value ?? "").toString().replace(/"/g, '\\"');
+            const valStr = types.includes("value") ? `<span class="highlight">"${cleanVal}"</span>` : `"${cleanVal}"`;
+
+            blockBuffer += `  ${keyStr}: ${valStr}\n`;
+          });
+
+          if (blockBuffer) {
+            const block = document.createElement("div");
+            block.className = "json-block";
+            block.innerHTML = `<pre>{\n${blockBuffer}}</pre>`;
+            els.container.appendChild(block);
+            renderedCount++;
+          }
+        });
+
+        if (showOnlyChanges && !renderedCount) {
+          els.container.innerHTML = "<p><b>No changes to display.</b></p>";
+        }
+      }
+
+      // --- UI ACCENTS & POPULATORS ---
+      function populateDropdowns(initialLoad = false) {
+        if (initialLoad) {
+          const languages = [...new Set(mergedJson.map(i => i.language?.toUpperCase()).filter(Boolean))].sort();
+          els.langFilter.innerHTML = '<option value="">All</option>';
+          
+          const buildGroup = (label, items) => {
+            if (!items.length) return;
+            const group = document.createElement("optgroup");
+            group.label = label;
+            items.forEach(l => group.appendChild(new Option(l, l)));
+            els.langFilter.appendChild(group);
+          };
+          buildGroup("EN Languages", languages.filter(l => l.includes("EN")));
+          buildGroup("Other Languages", languages.filter(l => !l.includes("EN")));
+        }
+
+        // Key filter parsing setup
+        const currentSelection = els.keyFilter.value;
+        const currentData = getFilteredData();
+        const counts = {};
+        
+        currentData.forEach(obj => Object.keys(obj).forEach(k => k !== '_uid' && (counts[k] = (counts[k] || 0) + 1)));
+
+        els.keyFilter.innerHTML = '<option value="">🔍 All keys</option>';
+        
+        const mappedGroups = {};
+        Object.keys(counts).sort().forEach(key => {
+          const lower = key.toLowerCase();
+          const targetGroup = Object.keys(GROUP_PATTERNS).find(g => GROUP_PATTERNS[g].some(p => lower.includes(p))) || "🆕 Other Keys";
+          mappedGroups[targetGroup] ??= [];
+          mappedGroups[targetGroup].push(key);
+        });
+
+        Object.entries(mappedGroups).forEach(([label, keys]) => {
+          const optGroup = document.createElement("optgroup");
+          optGroup.label = label;
+          keys.forEach(k => optGroup.appendChild(new Option(`${k} (${counts[k]})`, k)));
+          els.keyFilter.appendChild(optGroup);
+        });
+
+        if (Array.from(els.keyFilter.options).some(o => o.value === currentSelection)) {
+          els.keyFilter.value = currentSelection;
+        }
+      }
+
+      // --- INTERACTIONS & EVENTS ---
+      document.getElementById("loadUrlBtn").onclick = async () => {
+        const url = els.urlInput.value.trim();
+        if (!url) return alert("Please enter a valid JSON URL.");
+        
+        let history = JSON.parse(localStorage.getItem(URL_HISTORY_KEY)) || [];
+        localStorage.setItem(URL_HISTORY_KEY, JSON.stringify([url, ...history.filter(u => u !== url)].slice(0, MAX_HISTORY)));
+
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          const raw = Array.isArray(data) ? data : data.content || [];
+          
+          mergedJson = raw.map((item, i) => ({ ...item, _uid: `uid_${Date.now()}_${i}` }));
+          currentHighlights = {};
+          historyStack = [];
+          
+          updateUndoUI();
+          populateDropdowns(true);
+          els.container.innerHTML = "<p><b>✨ JSON loaded. Use filters above ✨</b></p>";
+        } catch (e) {
+          alert("Error loading JSON file pipeline.");
+        }
+      };
+
+      document.getElementById("applyFiltersBtn").onclick = () => verifyDataLoaded() && (populateDropdowns() || render(false));
+
+      document.getElementById("replaceBtn").onclick = () => {
+        if (!verifyDataLoaded()) return;
+        pushHistoryState();
+
+        const find = els.findInput.value;
+        const replace = els.replaceInput.value;
+        const replaceKeys = els.keyToggle.checked;
+        const activeKeys = Array.from(els.keyFilter.selectedOptions).map(o => o.value).filter(Boolean);
+        
+        let keysAltered = false;
+        currentHighlights = {};
+
+        const targetedData = getFilteredData();
+
+        targetedData.forEach(item => {
+          const uid = item._uid;
+          let changed = false;
+          const updatedItem = { _uid: uid };
+
+          Object.entries(item).forEach(([key, val]) => {
+            if (key === '_uid') return;
+            let currentKey = key;
+            let currentVal = val;
+            const strVal = val ?? "";
+
+            if (!activeKeys.length || activeKeys.includes(key)) {
+              // Values Check
+              if (find ? strVal.toString().includes(find) : strVal === "") {
+                currentVal = find ? strVal.toString().split(find).join(replace) : replace;
+                trackHighlight(uid, currentKey, "value");
+                changed = true;
+              }
+              // Keys Check
+              if (replaceKeys && (find ? key.includes(find) : key === "")) {
+                currentKey = find ? key.split(find).join(replace) : replace;
+                trackHighlight(uid, currentKey, "key");
+                changed = keysAltered = true;
+                changed = true;
+              }
+            }
+            updatedItem[currentKey] = currentVal;
+          });
+
+          if (changed) {
+            const masterIdx = mergedJson.findIndex(m => m._uid === uid);
+            if (masterIdx !== -1) mergedJson[masterIdx] = updatedItem;
+          }
+        });
+
+        if (keysAltered) els.keyFilter.value = "";
+        populateDropdowns();
+        render(true);
+      };
+
+      els.undoBtn.onclick = () => {
+        if (!historyStack.length) return;
+        
+        const previousState = mergedJson;
+        mergedJson = historyStack.pop();
+        currentHighlights = {};
+
+        // Auto calculate restoration changes for live differential highlighted paths
+        mergedJson.forEach(item => {
+          const old = previousState.find(p => p._uid === item._uid);
+          if (!old) return;
+          Object.entries(item).forEach(([k, v]) => {
+            if (k === '_uid') return;
+            if (!old.hasOwnProperty(k)) trackHighlight(item._uid, k, "key");
+            else if (old[k] !== v) trackHighlight(item._uid, k, "value");
+          });
+        });
+
+        updateUndoUI();
+        populateDropdowns();
+        render(true);
+      };
+
+      document.getElementById("downloadBtn").onclick = () => {
+        if (!verifyDataLoaded()) return;
+        const clean = mergedJson.map(({ _uid, ...rest }) => rest);
+        const blob = new Blob([JSON.stringify(clean, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "updated_content.json";
+        a.click();
+      };
+
+      // --- HISTORICAL SEARCH AUTOCOMPLETE UI ---
+      const showSuggestions = () => {
+        const history = JSON.parse(localStorage.getItem(URL_HISTORY_KEY)) || [];
+        const filtered = history.filter(u => u.toLowerCase().includes(els.urlInput.value.toLowerCase()));
+        els.suggestions.innerHTML = "";
+        
+        if (!filtered.length) return (els.suggestions.style.display = "none");
+        
+        filtered.forEach(url => {
+          const div = document.createElement("div");
+          div.textContent = url;
+          div.onclick = () => {
+            els.urlInput.value = url;
+            els.suggestions.style.display = "none";
+          };
+          els.suggestions.appendChild(div);
+        });
+        els.suggestions.style.display = "block";
+      };
+
+      els.urlInput.addEventListener("input", showSuggestions);
+      els.urlInput.addEventListener("focus", showSuggestions);
+      document.addEventListener("click", e => !els.suggestions.contains(e.target) && e.target !== els.urlInput && (els.suggestions.style.display = "none"));
+    </script>
+  </body>
+</html>
